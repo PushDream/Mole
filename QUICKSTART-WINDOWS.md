@@ -2,6 +2,8 @@
 
 ## Installation (5 minutes)
 
+### Option 1: Install (Recommended)
+
 1. **Clone the repository:**
    ```powershell
    git clone https://github.com/tw93/mole.git
@@ -14,7 +16,17 @@
    - Navigate to the mole directory
    - Run: `.\install-windows.ps1`
 
-3. **Restart your terminal** to use the `mole` command
+3. **Restart your terminal** to use the `mole` command from anywhere
+
+### Option 2: Run Without Installing
+
+```powershell
+git clone https://github.com/tw93/mole.git
+cd mole
+.\mole clean          # Use .\mole instead of just mole
+```
+
+The `mole.bat` launcher works from the repo directory without installation.
 
 ## Common Commands
 

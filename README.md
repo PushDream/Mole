@@ -49,8 +49,18 @@ brew install tw93/tap/mole
 git clone https://github.com/tw93/mole.git
 cd mole
 
-# Run installer as Administrator
+# Run installer as Administrator (adds to PATH)
 .\install-windows.ps1
+
+# After install, use from anywhere:
+mole clean
+```
+
+**Or run without installing:**
+
+```powershell
+cd mole
+.\mole clean    # Works directly from repo
 ```
 
 For detailed Windows instructions, see [WINDOWS.md](WINDOWS.md)
