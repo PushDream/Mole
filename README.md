@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Mole</h1>
-  <p><em>Deep clean and optimize your Mac.</em></p>
+  <p><em>Deep clean and optimize your Mac and Windows PC.</em></p>
 </div>
 
 <p align="center">
@@ -26,6 +26,8 @@
 
 ## Quick Start
 
+### macOS
+
 **Installation:**
 
 ```bash
@@ -37,6 +39,21 @@ Or via Homebrew:
 ```bash
 brew install tw93/tap/mole
 ```
+
+### Windows
+
+**Installation:**
+
+```powershell
+# Clone the repository
+git clone https://github.com/tw93/mole.git
+cd mole
+
+# Run installer as Administrator
+.\install-windows.ps1
+```
+
+For detailed Windows instructions, see [WINDOWS.md](WINDOWS.md)
 
 **Run:**
 
@@ -220,6 +237,28 @@ Adds 5 commands: `clean`, `uninstall`, `optimize`, `analyze`, `status`. Mole aut
 - Have ideas or fixes? Open an issue or PR to help shape Mole's future with the community.
 
 - Love cats? Treat Tangyuan and Cola to canned food via <a href="https://miaoyan.app/cats.html?name=Mole" target="_blank">this link</a> to keep our mascots purring.
+
+## Platform Support
+
+Mole now supports both macOS and Windows!
+
+| Feature | macOS | Windows |
+|---------|-------|---------|
+| System Cleanup | ✅ Full | ✅ Full |
+| App Uninstaller | ✅ | ✅ |
+| System Monitor | ✅ | ✅ |
+| Disk Analyzer | ✅ | ⏳ Coming Soon |
+| System Optimization | ✅ | ⏳ Coming Soon |
+| Project Purge | ✅ | ⏳ Coming Soon |
+
+### Windows-Specific Features
+- Windows Registry cleanup
+- WMI-based system monitoring
+- Prefetch and thumbnail cache cleaning
+- Windows Update cache cleanup
+- UAC elevation support
+
+**See [WINDOWS.md](WINDOWS.md) for detailed Windows installation and usage instructions.**
 
 ## License
 
