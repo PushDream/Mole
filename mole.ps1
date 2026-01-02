@@ -42,7 +42,7 @@ function Show-Help {
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -DryRun           Preview changes without making them"
-    Write-Host "  -Debug            Show detailed debug information"
+    Write-Host "  -ShowErrors       Show detailed error information"
     Write-Host "  -Help             Show this help message"
     Write-Host ""
     Write-Host "Examples:"
