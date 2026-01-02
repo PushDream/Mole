@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -521,12 +520,7 @@ func measureOverviewSize(path string) (int64, error) {
 		return 0, fmt.Errorf("cannot access path: %v", err)
 	}
 
-	// Determine if we should exclude ~/Library (when scanning Home)
-	home := os.Getenv("HOME")
-	excludePath := ""
-	if home != "" && path == home {
-		excludePath = filepath.Join(home, "Library")
-	}
+	excludePath := overviewExcludePath(path)
 
 	if cached, err := loadStoredOverviewSize(path); err == nil && cached > 0 {
 		return cached, nil
@@ -642,31 +636,10 @@ func getDirectoryLogicalSizeWithExclude(path string, excludePath string) (int64,
 	return total, nil
 }
 
-func getActualFileSize(_ string, info fs.FileInfo) int64 {
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok {
-		return info.Size()
-	}
-
-	actualSize := stat.Blocks * 512
-	if actualSize < info.Size() {
-		return actualSize
-	}
-	return info.Size()
-}
-
 func getLastAccessTime(path string) time.Time {
 	info, err := os.Stat(path)
 	if err != nil {
 		return time.Time{}
 	}
 	return getLastAccessTimeFromInfo(info)
-}
-
-func getLastAccessTimeFromInfo(info fs.FileInfo) time.Time {
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok {
-		return time.Time{}
-	}
-	return time.Unix(stat.Atimespec.Sec, stat.Atimespec.Nsec)
 }

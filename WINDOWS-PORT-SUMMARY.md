@@ -84,7 +84,7 @@ Mole/
 │   └── status.ps1                     # Windows status wrapper
 ├── scripts/
 │   ├── build-status-windows.ps1       # Windows build script
-│   └── build-analyze-windows.ps1      # Placeholder for analyzer
+│   └── build-analyze-windows.ps1      # Build script for analyzer
 ├── mole.ps1                           # Main Windows entry point
 ├── install-windows.ps1                # Windows installer
 ├── WINDOWS.md                         # Windows documentation
@@ -118,13 +118,15 @@ The Windows port uses a **hybrid approach**:
 - System status monitoring (CPU, memory, disk, network, battery)
 - System cleanup with dry-run preview
 - Application uninstaller with registry cleanup
+- Disk analyzer (Windows paths + Explorer integration)
+- Optimize tasks (Windows maintenance workflow)
+- Project purge (artifact cleanup for common build outputs)
 - Build system for Go binaries
 - Installation and PATH integration
 
 ### ⚠️ Platform Differences
-- **Disk analyzer**: macOS only (Windows version coming soon)
-- **System optimization**: macOS only (Windows equivalent planned)
-- **Project purge**: macOS only (will work cross-platform)
+- **Memory pressure**: macOS only (system pressure level)
+- **Touch ID sudo**: macOS only
 
 ## Testing Checklist
 
@@ -140,7 +142,12 @@ To verify the Windows port works correctly:
    .\scripts\build-status-windows.ps1
    ```
 
-3. **Test Commands**
+3. **Build Disk Analyzer**
+   ```powershell
+   .\scripts\build-analyze-windows.ps1
+   ```
+
+4. **Test Commands**
    ```powershell
    # Dry run cleanup
    mole clean -DryRun
@@ -150,6 +157,15 @@ To verify the Windows port works correctly:
 
    # Run status monitor
    mole status
+
+   # Run disk analyzer
+   mole analyze
+
+   # Run optimize workflow
+   mole optimize
+
+   # Run project purge (dry run)
+   mole purge -DryRun
    ```
 
 ## Technical Implementation Details
@@ -180,16 +196,15 @@ To verify the Windows port works correctly:
 ## Future Enhancements
 
 ### Planned Features
-1. **Disk Analyzer** - Interactive disk space explorer (similar to macOS version)
-2. **System Optimization** - Windows-specific tasks:
+1. **System Optimization** - Windows-specific tasks:
    - SFC scan automation
    - DISM health check
    - Windows Search index rebuild
    - DNS cache flush
    - Event log cleanup
-3. **Project Purge** - Clean `node_modules`, `target`, `build` directories
-4. **Startup Manager** - Manage Windows startup programs
-5. **Windows Defender Cache** - Clean Windows Defender logs/caches
+2. **Project Purge** - Clean `node_modules`, `target`, `build` directories
+3. **Startup Manager** - Manage Windows startup programs
+4. **Windows Defender Cache** - Clean Windows Defender logs/caches
 
 ### Code Improvements
 1. Better error handling in PowerShell scripts
@@ -203,7 +218,7 @@ To verify the Windows port works correctly:
 1. **Admin Requirements**: Some cleanup operations require elevation
 2. **Sensor Data**: Limited thermal sensor access without third-party tools
 3. **File Locking**: Windows file locking prevents some active app cache cleaning
-4. **Disk Analyzer**: Not yet implemented (complex UI requires terminal emulator support)
+4. **Disk Analyzer**: Requires Go build on Windows; use `build-analyze-windows.ps1`
 
 ## Dependencies
 
@@ -222,7 +237,7 @@ To verify the Windows port works correctly:
 Affected files:
 - `cmd/status/metrics_battery_*.go`
 - `cmd/status/metrics_disk_*.go`
-- `cmd/analyze/main.go` (macOS only, has `//go:build darwin`)
+- `cmd/analyze/main.go` (cross-platform with OS-specific helpers)
 
 ## Performance Notes
 

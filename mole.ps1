@@ -37,8 +37,14 @@ function Show-Help {
     Write-Host "Deep system cleanup - remove caches, temp files, logs"
     Write-ColorMessage "  uninstall <app>   " -Color Cyan -NoNewline
     Write-Host "Completely remove an application and its leftovers"
+    Write-ColorMessage "  analyze [path]    " -Color Cyan -NoNewline
+    Write-Host "Interactive disk space analyzer"
     Write-ColorMessage "  status            " -Color Cyan -NoNewline
     Write-Host "Real-time system monitoring dashboard"
+    Write-ColorMessage "  optimize          " -Color Cyan -NoNewline
+    Write-Host "System maintenance tasks with safety prompts"
+    Write-ColorMessage "  purge             " -Color Cyan -NoNewline
+    Write-Host "Remove project build artifacts"
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -DryRun           Preview changes without making them"
@@ -50,7 +56,10 @@ function Show-Help {
     Write-Host "  mole clean -DryRun            # Preview what would be cleaned"
     Write-Host "  mole uninstall Chrome         # Uninstall Chrome and remove leftovers"
     Write-Host "  mole uninstall -List          # List all installed applications"
+    Write-Host "  mole analyze                  # Explore disk usage"
     Write-Host "  mole status                   # Show system status dashboard"
+    Write-Host "  mole optimize                 # Run maintenance tasks"
+    Write-Host "  mole purge                    # Clean project artifacts"
     Write-Host ""
     Write-Host "For more info: https://github.com/tw93/mole"
     Write-Host ""
@@ -103,6 +112,18 @@ switch ($Command.ToLower()) {
         }
     }
 
+    "analyze" {
+        $AnalyzeScript = Join-Path $BinDir "analyze.ps1"
+        if (Test-Path $AnalyzeScript) {
+            & $AnalyzeScript @ScriptArgs @PositionalArgs
+            exit $LASTEXITCODE
+        } else {
+            Write-ColorMessage "Error: analyze.ps1 not found in $BinDir" -Color Red
+            Write-ColorMessage "Build the analyzer first: .\scripts\build-analyze-windows.ps1" -Color Yellow
+            exit 1
+        }
+    }
+
     "status" {
         $StatusScript = Join-Path $BinDir "status.ps1"
         if (Test-Path $StatusScript) {
@@ -111,6 +132,28 @@ switch ($Command.ToLower()) {
         } else {
             Write-ColorMessage "Error: status.ps1 not found in $BinDir" -Color Red
             Write-ColorMessage "Build the status monitor first: .\scripts\build-status-windows.ps1" -Color Yellow
+            exit 1
+        }
+    }
+
+    "optimize" {
+        $OptimizeScript = Join-Path $BinDir "optimize.ps1"
+        if (Test-Path $OptimizeScript) {
+            & $OptimizeScript @ScriptArgs @PositionalArgs
+            exit $LASTEXITCODE
+        } else {
+            Write-ColorMessage "Error: optimize.ps1 not found in $BinDir" -Color Red
+            exit 1
+        }
+    }
+
+    "purge" {
+        $PurgeScript = Join-Path $BinDir "purge.ps1"
+        if (Test-Path $PurgeScript) {
+            & $PurgeScript @ScriptArgs @PositionalArgs
+            exit $LASTEXITCODE
+        } else {
+            Write-ColorMessage "Error: purge.ps1 not found in $BinDir" -Color Red
             exit 1
         }
     }

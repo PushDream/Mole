@@ -7,6 +7,9 @@ Windows version of Mole - a comprehensive system maintenance and optimization to
 - **System Cleanup**: Deep clean Windows temp files, caches, browser data, and more
 - **Application Uninstaller**: Completely remove applications and their leftovers
 - **System Monitor**: Real-time dashboard showing CPU, memory, disk, network, and battery stats
+- **Disk Analyzer**: Interactive disk space explorer
+- **Optimize**: Guided Windows maintenance tasks
+- **Project Purge**: Remove heavy build artifacts (node_modules, build, dist, target)
 
 ## Installation
 
@@ -81,6 +84,30 @@ mole status
 
 Press `q` or `Esc` to exit the status monitor.
 
+### Disk Analyzer
+
+Explore disk usage interactively:
+
+```powershell
+mole analyze
+```
+
+### Optimize
+
+Run Windows maintenance tasks:
+
+```powershell
+mole optimize
+```
+
+### Project Purge
+
+Clean build artifacts under common project folders:
+
+```powershell
+mole purge
+```
+
 ## What Gets Cleaned
 
 ### Windows User Caches
@@ -118,7 +145,7 @@ Press `q` or `Esc` to exit the status monitor.
 
 - Windows 10 or later
 - PowerShell 5.1 or later
-- Go 1.24+ (for building the status monitor)
+- Go 1.24+ (for building the status monitor and analyzer)
 
 ## Building from Source
 
@@ -130,6 +157,14 @@ Press `q` or `Esc` to exit the status monitor.
 
 This creates `bin\status-go.exe` which provides real-time system metrics.
 
+### Build Disk Analyzer
+
+```powershell
+.\scripts\build-analyze-windows.ps1
+```
+
+This creates `bin\analyze-go.exe` which provides the disk analyzer.
+
 ## Differences from macOS Version
 
 The Windows version has been adapted for Windows-specific cleanup targets:
@@ -139,7 +174,7 @@ The Windows version has been adapted for Windows-specific cleanup targets:
 | System Cleanup | ✅ | ✅ |
 | App Uninstaller | ✅ | ✅ |
 | System Monitor | ✅ | ✅ |
-| Disk Analyzer | ✅ | ⏳ Coming soon |
+| Disk Analyzer | ✅ | ✅ |
 | Touch ID sudo | ✅ | N/A |
 
 ### Windows-Specific Features
@@ -152,9 +187,8 @@ The Windows version has been adapted for Windows-specific cleanup targets:
 
 ### Not Yet Implemented
 
-- Interactive disk space analyzer (use WinDirStat as alternative)
-- System optimization tasks (e.g., SFC scan, DISM)
-- Project artifact cleanup (node_modules, etc.) - coming soon
+- Startup manager (planned)
+- Windows Defender cache cleanup (planned)
 
 ## Troubleshooting
 
@@ -206,11 +240,11 @@ Or manually:
 
 Contributions are welcome! The Windows version is still being developed. Priority areas:
 
-1. Disk space analyzer (similar to macOS version)
-2. System optimization tasks
-3. Project artifact cleanup
-4. Additional application-specific cleanup targets
-5. Windows-specific health checks
+1. Startup manager
+2. Windows Defender cache cleanup
+3. Additional application-specific cleanup targets
+4. Windows-specific health checks
+5. Analyzer and optimize refinements
 
 ## License
 

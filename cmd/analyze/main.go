@@ -1,16 +1,11 @@
-//go:build darwin
-
 package main
 
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -117,7 +112,7 @@ type model struct {
 }
 
 func (m model) inOverviewMode() bool {
-	return m.isOverview && m.path == "/"
+	return m.isOverview && m.path == overviewRoot
 }
 
 func main() {
@@ -131,7 +126,7 @@ func main() {
 
 	if target == "" {
 		isOverview = true
-		abs = "/"
+		abs = overviewRoot
 	} else {
 		var err error
 		abs, err = filepath.Abs(target)
@@ -196,59 +191,6 @@ func newModel(path string, isOverview bool) model {
 	}
 
 	return m
-}
-
-func createOverviewEntries() []dirEntry {
-	home := os.Getenv("HOME")
-	entries := []dirEntry{}
-
-	// Separate Home and ~/Library to avoid double counting.
-	if home != "" {
-		entries = append(entries, dirEntry{Name: "Home", Path: home, IsDir: true, Size: -1})
-
-		userLibrary := filepath.Join(home, "Library")
-		if _, err := os.Stat(userLibrary); err == nil {
-			entries = append(entries, dirEntry{Name: "App Library", Path: userLibrary, IsDir: true, Size: -1})
-		}
-	}
-
-	entries = append(entries,
-		dirEntry{Name: "Applications", Path: "/Applications", IsDir: true, Size: -1},
-		dirEntry{Name: "System Library", Path: "/Library", IsDir: true, Size: -1},
-	)
-
-	// Include Volumes only when real mounts exist.
-	if hasUsefulVolumeMounts("/Volumes") {
-		entries = append(entries, dirEntry{Name: "Volumes", Path: "/Volumes", IsDir: true, Size: -1})
-	}
-
-	return entries
-}
-
-func hasUsefulVolumeMounts(path string) bool {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return false
-	}
-
-	for _, entry := range entries {
-		name := entry.Name()
-		if strings.HasPrefix(name, ".") {
-			continue
-		}
-
-		info, err := os.Lstat(filepath.Join(path, name))
-		if err != nil {
-			continue
-		}
-		if info.Mode()&fs.ModeSymlink != 0 {
-			continue // Ignore the synthetic MacintoshHD link
-		}
-		if info.IsDir() {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *model) hydrateOverviewEntries() {
@@ -719,7 +661,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						go func(p string) {
 							ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 							defer cancel()
-							_ = exec.CommandContext(ctx, "open", p).Run()
+							_ = openPath(ctx, p)
 						}(path)
 					}
 					m.status = fmt.Sprintf("Opening %d items...", count)
@@ -728,7 +670,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					go func(path string) {
 						ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 						defer cancel()
-						_ = exec.CommandContext(ctx, "open", path).Run()
+						_ = openPath(ctx, path)
 					}(selected.Path)
 					m.status = fmt.Sprintf("Opening %s...", selected.Name)
 				}
@@ -744,7 +686,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					go func(p string) {
 						ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 						defer cancel()
-						_ = exec.CommandContext(ctx, "open", p).Run()
+						_ = openPath(ctx, p)
 					}(path)
 				}
 				m.status = fmt.Sprintf("Opening %d items...", count)
@@ -753,13 +695,13 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				go func(path string) {
 					ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 					defer cancel()
-					_ = exec.CommandContext(ctx, "open", path).Run()
+					_ = openPath(ctx, path)
 				}(selected.Path)
 				m.status = fmt.Sprintf("Opening %s...", selected.Name)
 			}
 		}
 	case "f", "F":
-		// Reveal in Finder (multi-select aware).
+		// Reveal in file manager (multi-select aware).
 		const maxBatchReveal = 20
 		if m.showLargeFiles {
 			if len(m.largeFiles) > 0 {
@@ -773,18 +715,18 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						go func(p string) {
 							ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 							defer cancel()
-							_ = exec.CommandContext(ctx, "open", "-R", p).Run()
+							_ = revealPath(ctx, p)
 						}(path)
 					}
-					m.status = fmt.Sprintf("Showing %d items in Finder...", count)
+					m.status = fmt.Sprintf("Showing %d items in %s...", count, fileManagerName())
 				} else {
 					selected := m.largeFiles[m.largeSelected]
 					go func(path string) {
 						ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 						defer cancel()
-						_ = exec.CommandContext(ctx, "open", "-R", path).Run()
+						_ = revealPath(ctx, path)
 					}(selected.Path)
-					m.status = fmt.Sprintf("Showing %s in Finder...", selected.Name)
+					m.status = fmt.Sprintf("Showing %s in %s...", selected.Name, fileManagerName())
 				}
 			}
 		} else if len(m.entries) > 0 {
@@ -798,18 +740,18 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					go func(p string) {
 						ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 						defer cancel()
-						_ = exec.CommandContext(ctx, "open", "-R", p).Run()
+						_ = revealPath(ctx, p)
 					}(path)
 				}
-				m.status = fmt.Sprintf("Showing %d items in Finder...", count)
+				m.status = fmt.Sprintf("Showing %d items in %s...", count, fileManagerName())
 			} else {
 				selected := m.entries[m.selected]
 				go func(path string) {
 					ctx, cancel := context.WithTimeout(context.Background(), openCommandTimeout)
 					defer cancel()
-					_ = exec.CommandContext(ctx, "open", "-R", path).Run()
+					_ = revealPath(ctx, path)
 				}(selected.Path)
-				m.status = fmt.Sprintf("Showing %s in Finder...", selected.Name)
+				m.status = fmt.Sprintf("Showing %s in %s...", selected.Name, fileManagerName())
 			}
 		}
 	case " ":
@@ -922,7 +864,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) switchToOverviewMode() tea.Cmd {
 	m.isOverview = true
-	m.path = "/"
+	m.path = overviewRoot
 	m.scanning = false
 	m.showLargeFiles = false
 	m.largeFiles = nil

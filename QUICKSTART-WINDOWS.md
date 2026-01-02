@@ -123,11 +123,14 @@ First-time cleanup usually recovers:
 1. Run `mole clean -DryRun` to see what can be cleaned
 2. Review the list and run `mole clean` to free up space
 3. Use `mole status` to monitor system health
-4. Check back monthly for best results
+4. Explore disk usage with `mole analyze`
+5. Run `mole optimize` for maintenance checks
+6. Use `mole purge -DryRun` to find heavy project artifacts
+7. Check back monthly for best results
 
 ---
 
-**Note:** The Windows version is actively being developed. Some features from the macOS version are coming soon:
-- Interactive disk analyzer
+**Note:** The Windows version is actively being developed. New Windows parity commands are now available:
+- Disk analyzer
 - System optimization
 - Project artifact cleanup

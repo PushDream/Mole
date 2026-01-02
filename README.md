@@ -288,9 +288,9 @@ Mole now supports both macOS and Windows!
 | System Cleanup | ✅ Full | ✅ Full |
 | App Uninstaller | ✅ | ✅ |
 | System Monitor | ✅ | ✅ |
-| Disk Analyzer | ✅ | ⏳ Coming Soon |
-| System Optimization | ✅ | ⏳ Coming Soon |
-| Project Purge | ✅ | ⏳ Coming Soon |
+| Disk Analyzer | ✅ | ✅ |
+| System Optimization | ✅ | ✅ |
+| Project Purge | ✅ | ✅ |
 
 ### Windows-Specific Features
 - Windows Registry cleanup
