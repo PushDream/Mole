@@ -97,17 +97,17 @@ function Get-SearchRoots {
     }
 
     $roots = @()
-    $home = $env:USERPROFILE
-    if ($home) {
+    $userHome = $env:USERPROFILE
+    if ($userHome) {
         $candidates = @("Projects", "Project", "Source", "Code", "Dev", "Workspace", "Repos")
         foreach ($name in $candidates) {
-            $candidate = Join-Path $home $name
+            $candidate = Join-Path $userHome $name
             if (Test-Path $candidate) {
                 $roots += $candidate
             }
         }
         if ($roots.Count -eq 0) {
-            $roots += $home
+            $roots += $userHome
         }
     }
     return $roots
