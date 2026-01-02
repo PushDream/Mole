@@ -28,7 +28,7 @@ if ($Uninstall) {
     # Remove installation directory
     if (Test-Path $InstallPath) {
         Remove-Item -Path $InstallPath -Recurse -Force
-        Write-ColorMessage "✓ Removed $InstallPath" -Color Green
+        Write-ColorMessage "[OK] Removed $InstallPath" -Color Green
     }
 
     Write-ColorMessage "`nMole has been uninstalled" -Color Green
@@ -82,14 +82,14 @@ if (Test-Path $BuildScript) {
         $BuiltBinary = Join-Path $SourceDir "bin\status-go.exe"
         if (Test-Path $BuiltBinary) {
             Copy-Item -Path $BuiltBinary -Destination "$InstallPath\bin\" -Force
-            Write-ColorMessage "✓ Status monitor built and installed" -Color Green
+            Write-ColorMessage "[OK] Status monitor built and installed" -Color Green
         }
     } catch {
-        Write-ColorMessage "⚠ Warning: Could not build status monitor" -Color Yellow
+        Write-ColorMessage "[!] Warning: Could not build status monitor" -Color Yellow
         Write-Host "  You can build it later by running: .\scripts\build-status-windows.ps1"
     }
 } else {
-    Write-ColorMessage "⚠ Warning: Build script not found" -Color Yellow
+    Write-ColorMessage "[!] Warning: Build script not found" -Color Yellow
 }
 
 # Add to PATH
@@ -99,10 +99,10 @@ $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 if ($currentPath -notlike "*$InstallPath*") {
     $newPath = "$currentPath;$InstallPath"
     [Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
-    Write-ColorMessage "✓ Added to system PATH" -Color Green
+    Write-ColorMessage "[OK] Added to system PATH" -Color Green
     Write-ColorMessage "  Note: Restart your terminal for PATH changes to take effect" -Color Yellow
 } else {
-    Write-ColorMessage "✓ Already in PATH" -Color Green
+    Write-ColorMessage "[OK] Already in PATH" -Color Green
 }
 
 # Create desktop shortcut (optional)
@@ -116,7 +116,7 @@ if ($createShortcut -eq 'y' -or $createShortcut -eq 'Y') {
     $Shortcut.WorkingDirectory = $InstallPath
     $Shortcut.Description = "Mole System Maintenance Tool"
     $Shortcut.Save()
-    Write-ColorMessage "✓ Desktop shortcut created" -Color Green
+    Write-ColorMessage "[OK] Desktop shortcut created" -Color Green
 }
 
 Write-Host ""

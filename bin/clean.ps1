@@ -376,11 +376,11 @@ function Show-Summary {
 # Interactive category selection
 function Show-CategoryMenu {
     $categories = @(
-        @{Name="Windows User Caches"; Enabled=$true; Function="Clear-UserCaches"},
-        @{Name="Browser Caches"; Enabled=$true; Function="Clear-BrowserCaches"},
-        @{Name="Developer Tools"; Enabled=$true; Function="Clear-DeveloperTools"},
-        @{Name="Application Caches"; Enabled=$true; Function="Clear-ApplicationCaches"},
-        @{Name="Recycle Bin"; Enabled=$true; Function="Clear-RecycleBin"}
+        [PSCustomObject]@{Name="Windows User Caches"; Enabled=$true; Function="Clear-UserCaches"},
+        [PSCustomObject]@{Name="Browser Caches"; Enabled=$true; Function="Clear-BrowserCaches"},
+        [PSCustomObject]@{Name="Developer Tools"; Enabled=$true; Function="Clear-DeveloperTools"},
+        [PSCustomObject]@{Name="Application Caches"; Enabled=$true; Function="Clear-ApplicationCaches"},
+        [PSCustomObject]@{Name="Recycle Bin"; Enabled=$true; Function="Clear-RecycleBin"}
     )
 
     if ($NonInteractive -or $DryRun) {
@@ -435,7 +435,15 @@ function Show-CategoryMenu {
                 Draw-CategoryMenu -cats $categories -sel $selected
             }
             32 { # Spacebar
-                $categories[$selected].Enabled = -not $categories[$selected].Enabled
+                # Toggle the enabled state
+                $newState = -not $categories[$selected].Enabled
+                $categories[$selected].Enabled = $newState
+
+                # Debug: Show what we just toggled
+                if ($ShowErrors) {
+                    Write-Host "Toggled $($categories[$selected].Name) to $newState (index $selected)" -ForegroundColor Cyan
+                    Start-Sleep -Milliseconds 500
+                }
                 Draw-CategoryMenu -cats $categories -sel $selected
             }
             13 { # Enter
@@ -449,7 +457,8 @@ function Show-CategoryMenu {
         }
     }
 
-    return $categories
+    # Return the modified categories array
+    return ,$categories
 }
 
 # Main execution
@@ -492,6 +501,15 @@ function Start-Cleanup {
 
     # Ask for confirmation if not dry-run and not non-interactive
     if (-not $DryRun -and -not $NonInteractive) {
+        # Debug: Show all category states
+        if ($ShowErrors) {
+            Write-Host "DEBUG - Category states:" -ForegroundColor Cyan
+            foreach ($cat in $categories) {
+                Write-Host "  $($cat.Name): Enabled=$($cat.Enabled)" -ForegroundColor Cyan
+            }
+            Write-Host ""
+        }
+
         Write-ColorMessage "Ready to clean $enabledCount categories" -Color $Colors.Yellow
         Write-Host ""
         Write-Host "This will:"
