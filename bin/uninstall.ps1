@@ -7,7 +7,6 @@
 param(
     [string]$AppName,
     [switch]$DryRun,
-    [switch]$Debug,
     [switch]$List
 )
 
