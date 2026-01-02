@@ -1,6 +1,7 @@
 #!/bin/bash
-# Mole - Project purge command (mo purge)
-# Remove old project build artifacts and dependencies
+# Mole - Purge command.
+# Cleans heavy project build artifacts.
+# Interactive selection by project.
 
 set -euo pipefail
 
@@ -111,6 +112,23 @@ perform_purge() {
     printf '\n'
 }
 
+# Show help message
+show_help() {
+    echo -e "${PURPLE_BOLD}Mole Purge${NC} - Clean old project build artifacts"
+    echo ""
+    echo -e "${YELLOW}Usage:${NC} mo purge [options]"
+    echo ""
+    echo -e "${YELLOW}Options:${NC}"
+    echo "  --paths         Edit custom scan directories"
+    echo "  --debug         Enable debug logging"
+    echo "  --help          Show this help message"
+    echo ""
+    echo -e "${YELLOW}Default Paths:${NC}"
+    for path in "${DEFAULT_PURGE_SEARCH_PATHS[@]}"; do
+        echo "  - $path"
+    done
+}
+
 # Main entry point
 main() {
     # Set up signal handling
@@ -119,12 +137,21 @@ main() {
     # Parse arguments
     for arg in "$@"; do
         case "$arg" in
+            "--paths")
+                source "$SCRIPT_DIR/../lib/manage/purge_paths.sh"
+                manage_purge_paths
+                exit 0
+                ;;
+            "--help")
+                show_help
+                exit 0
+                ;;
             "--debug")
                 export MO_DEBUG=1
                 ;;
             *)
                 echo "Unknown option: $arg"
-                echo "Use 'mo --help' for usage information"
+                echo "Use 'mo purge --help' for usage information"
                 exit 1
                 ;;
         esac

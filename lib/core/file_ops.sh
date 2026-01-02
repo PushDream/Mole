@@ -57,6 +57,13 @@ validate_path_for_deletion() {
         return 1
     fi
 
+    # Allow deletion of coresymbolicationd cache (safe system cache that can be rebuilt)
+    case "$path" in
+        /System/Library/Caches/com.apple.coresymbolicationd/data | /System/Library/Caches/com.apple.coresymbolicationd/data/*)
+            return 0
+            ;;
+    esac
+
     # Check path isn't critical system directory
     case "$path" in
         / | /bin | /sbin | /usr | /usr/bin | /usr/sbin | /etc | /var | /System | /System/* | /Library/Extensions)
@@ -87,13 +94,32 @@ safe_remove() {
         return 0
     fi
 
+    # Dry-run mode: log but don't delete
+    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
+        debug_log "[DRY RUN] Would remove: $path"
+        return 0
+    fi
+
     debug_log "Removing: $path"
 
     # Perform the deletion
-    if rm -rf "$path" 2> /dev/null; then # SAFE: safe_remove implementation
+    # Use || to capture the exit code so set -e won't abort on rm failures
+    local error_msg
+    local rm_exit=0
+    error_msg=$(rm -rf "$path" 2>&1) || rm_exit=$? # safe_remove
+
+    if [[ $rm_exit -eq 0 ]]; then
         return 0
     else
-        [[ "$silent" != "true" ]] && log_error "Failed to remove: $path"
+        # Check if it's a permission error
+        if [[ "$error_msg" == *"Permission denied"* ]] || [[ "$error_msg" == *"Operation not permitted"* ]]; then
+            MOLE_PERMISSION_DENIED_COUNT=${MOLE_PERMISSION_DENIED_COUNT:-0}
+            MOLE_PERMISSION_DENIED_COUNT=$((MOLE_PERMISSION_DENIED_COUNT + 1))
+            export MOLE_PERMISSION_DENIED_COUNT
+            debug_log "Permission denied: $path (may need Full Disk Access)"
+        else
+            [[ "$silent" != "true" ]] && log_error "Failed to remove: $path"
+        fi
         return 1
     fi
 }
@@ -117,6 +143,12 @@ safe_sudo_remove() {
     if [[ -L "$path" ]]; then
         log_error "Refusing to sudo remove symlink: $path"
         return 1
+    fi
+
+    # Dry-run mode: log but don't delete
+    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
+        debug_log "[DRY RUN] Would remove (sudo): $path"
+        return 0
     fi
 
     debug_log "Removing (sudo): $path"
@@ -185,13 +217,13 @@ safe_sudo_find_delete() {
     local age_days="${3:-7}"
     local type_filter="${4:-f}"
 
-    # Validate base directory
-    if [[ ! -d "$base_dir" ]]; then
-        log_error "Directory does not exist: $base_dir"
-        return 1
+    # Validate base directory (use sudo for permission-restricted dirs)
+    if ! sudo test -d "$base_dir" 2> /dev/null; then
+        debug_log "Directory does not exist (skipping): $base_dir"
+        return 0
     fi
 
-    if [[ -L "$base_dir" ]]; then
+    if sudo test -L "$base_dir" 2> /dev/null; then
         log_error "Refusing to search symlinked directory: $base_dir"
         return 1
     fi
@@ -234,9 +266,17 @@ get_path_size_kb() {
         return
     }
     # Direct execution without timeout overhead - critical for performance in loops
+    # Use || echo 0 to ensure failure in du (e.g. permission error) doesn't exit script under set -e
+    # Pipefail would normally cause the pipeline to fail if du fails, but || handle catches it.
     local size
-    size=$(command du -sk "$path" 2> /dev/null | awk '{print $1}')
-    echo "${size:-0}"
+    size=$(command du -sk "$path" 2> /dev/null | awk 'NR==1 {print $1; exit}' || true)
+
+    # Ensure size is a valid number (fix for non-numeric du output)
+    if [[ "$size" =~ ^[0-9]+$ ]]; then
+        echo "$size"
+    else
+        echo "0"
+    fi
 }
 
 # Calculate total size for multiple paths

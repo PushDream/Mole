@@ -1,15 +1,18 @@
 #!/bin/bash
+# Mole - Optimize command.
+# Runs system maintenance checks and fixes.
+# Supports dry-run where applicable.
 
 set -euo pipefail
 
-# Fix locale issues (Issue #83)
+# Fix locale issues.
 export LC_ALL=C
 export LANG=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/core/common.sh"
 
-# Set up cleanup trap for temporary files
+# Clean temp files on exit.
 trap cleanup_temp_files EXIT INT TERM
 source "$SCRIPT_DIR/lib/core/sudo.sh"
 source "$SCRIPT_DIR/lib/manage/update.sh"
@@ -26,32 +29,34 @@ print_header() {
 }
 
 run_system_checks() {
+    # Skip checks in dry-run mode.
+    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
+        return 0
+    fi
+
     unset AUTO_FIX_SUMMARY AUTO_FIX_DETAILS
-    echo ""
-    echo -e "${PURPLE_BOLD}System Check${NC}"
+    unset MOLE_SECURITY_FIXES_SHOWN
+    unset MOLE_SECURITY_FIXES_SKIPPED
     echo ""
 
-    echo -e "${BLUE}${ICON_ARROW}${NC} System updates"
     check_all_updates
     echo ""
 
-    echo -e "${BLUE}${ICON_ARROW}${NC} System health"
     check_system_health
     echo ""
 
-    echo -e "${BLUE}${ICON_ARROW}${NC} Security posture"
     check_all_security
     if ask_for_security_fixes; then
         perform_security_fixes
     fi
-    echo ""
+    if [[ "${MOLE_SECURITY_FIXES_SKIPPED:-}" != "true" ]]; then
+        echo ""
+    fi
 
-    echo -e "${BLUE}${ICON_ARROW}${NC} Configuration"
     check_all_config
     echo ""
 
     show_suggestions
-    echo ""
 
     if ask_for_updates; then
         perform_updates
@@ -67,25 +72,33 @@ show_optimization_summary() {
     if ((safe_count == 0 && confirm_count == 0)) && [[ -z "${AUTO_FIX_SUMMARY:-}" ]]; then
         return
     fi
-    local summary_title="Optimization and Check Complete"
+
+    local summary_title
     local -a summary_details=()
-
     local total_applied=$((safe_count + confirm_count))
-    summary_details+=("Applied ${GREEN}${total_applied:-0}${NC} optimizations; all system services tuned")
-    summary_details+=("Updates, security and system health fully reviewed")
 
-    local summary_line4=""
-    if [[ -n "${AUTO_FIX_SUMMARY:-}" ]]; then
-        summary_line4="${AUTO_FIX_SUMMARY}"
-        if [[ -n "${AUTO_FIX_DETAILS:-}" ]]; then
-            local detail_join
-            detail_join=$(echo "${AUTO_FIX_DETAILS}" | paste -sd ", " -)
-            [[ -n "$detail_join" ]] && summary_line4+=" — ${detail_join}"
-        fi
+    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
+        summary_title="Dry Run Complete - No Changes Made"
+        summary_details+=("Would apply ${YELLOW}${total_applied:-0}${NC} optimizations")
+        summary_details+=("Run without ${YELLOW}--dry-run${NC} to apply these changes")
     else
-        summary_line4="Your Mac is now faster and more responsive"
+        summary_title="Optimization and Check Complete"
+        summary_details+=("Applied ${GREEN}${total_applied:-0}${NC} optimizations; all system services tuned")
+        summary_details+=("Updates, security and system health fully reviewed")
+
+        local summary_line4=""
+        if [[ -n "${AUTO_FIX_SUMMARY:-}" ]]; then
+            summary_line4="${AUTO_FIX_SUMMARY}"
+            if [[ -n "${AUTO_FIX_DETAILS:-}" ]]; then
+                local detail_join
+                detail_join=$(echo "${AUTO_FIX_DETAILS}" | paste -sd ", " -)
+                [[ -n "$detail_join" ]] && summary_line4+=" — ${detail_join}"
+            fi
+        else
+            summary_line4="Your Mac is now faster and more responsive"
+        fi
+        summary_details+=("$summary_line4")
     fi
-    summary_details+=("$summary_line4")
 
     print_summary_block "$summary_title" "${summary_details[@]}"
 }
@@ -121,23 +134,12 @@ announce_action() {
     local desc="$2"
     local kind="$3"
 
-    local badge=""
-    if [[ "$kind" == "confirm" ]]; then
-        badge="${YELLOW}[Confirm]${NC} "
-    fi
-
-    local line="${BLUE}${ICON_ARROW}${NC} ${badge}${name}"
-    if [[ -n "$desc" ]]; then
-        line+=" ${GRAY}- ${desc}${NC}"
-    fi
-
-    if ${first_heading:-true}; then
-        first_heading=false
+    if [[ "${FIRST_ACTION:-true}" == "true" ]]; then
+        export FIRST_ACTION=false
     else
         echo ""
     fi
-
-    echo -e "$line"
+    echo -e "${BLUE}${ICON_ARROW} ${name}${NC}"
 }
 
 touchid_configured() {
@@ -152,7 +154,7 @@ touchid_supported() {
         fi
     fi
 
-    # Fallback: Apple Silicon Macs usually have Touch ID
+    # Fallback: Apple Silicon Macs usually have Touch ID.
     if [[ "$(uname -m)" == "arm64" ]]; then
         return 0
     fi
@@ -206,22 +208,6 @@ ensure_directory() {
     ensure_user_dir "$expanded_path"
 }
 
-count_local_snapshots() {
-    if ! command -v tmutil > /dev/null 2>&1; then
-        echo 0
-        return
-    fi
-
-    local output
-    output=$(tmutil listlocalsnapshots / 2> /dev/null || true)
-    if [[ -z "$output" ]]; then
-        echo 0
-        return
-    fi
-
-    echo "$output" | grep -c "com.apple.TimeMachine." | tr -d ' '
-}
-
 declare -a SECURITY_FIXES=()
 
 collect_security_fix_actions() {
@@ -237,7 +223,7 @@ collect_security_fix_actions() {
         fi
     fi
     if touchid_supported && ! touchid_configured; then
-        if ! is_whitelisted "touchid"; then
+        if ! is_whitelisted "check_touchid"; then
             SECURITY_FIXES+=("touchid|Enable Touch ID for sudo")
         fi
     fi
@@ -250,35 +236,37 @@ ask_for_security_fixes() {
         return 1
     fi
 
+    echo ""
     echo -e "${BLUE}SECURITY FIXES${NC}"
     for entry in "${SECURITY_FIXES[@]}"; do
         IFS='|' read -r _ label <<< "$entry"
         echo -e "  ${ICON_LIST} $label"
     done
     echo ""
-    echo -ne "${YELLOW}Apply now?${NC} ${GRAY}Enter confirm / ESC cancel${NC}: "
+    export MOLE_SECURITY_FIXES_SHOWN=true
+    echo -ne "${YELLOW}Apply now?${NC} ${GRAY}Enter confirm / Space cancel${NC}: "
 
     local key
     if ! key=$(read_key); then
-        echo "skip"
+        export MOLE_SECURITY_FIXES_SKIPPED=true
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Security fixes skipped"
         echo ""
         return 1
     fi
 
     if [[ "$key" == "ENTER" ]]; then
-        echo "apply"
         echo ""
         return 0
     else
-        echo "skip"
+        export MOLE_SECURITY_FIXES_SKIPPED=true
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Security fixes skipped"
         echo ""
         return 1
     fi
 }
 
 apply_firewall_fix() {
-    if sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 1; then
-        sudo pkill -HUP socketfilterfw 2> /dev/null || true
+    if sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on > /dev/null 2>&1; then
         echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Firewall enabled"
         FIREWALL_DISABLED=false
         return 0
@@ -333,8 +321,14 @@ perform_security_fixes() {
 }
 
 cleanup_all() {
+    stop_inline_spinner 2> /dev/null || true
     stop_sudo_session
     cleanup_temp_files
+}
+
+handle_interrupt() {
+    cleanup_all
+    exit 130
 }
 
 main() {
@@ -344,6 +338,9 @@ main() {
             "--debug")
                 export MO_DEBUG=1
                 ;;
+            "--dry-run")
+                export MOLE_DRY_RUN=1
+                ;;
             "--whitelist")
                 manage_whitelist "optimize"
                 exit 0
@@ -351,20 +348,27 @@ main() {
         esac
     done
 
-    trap cleanup_all EXIT INT TERM
+    trap cleanup_all EXIT
+    trap handle_interrupt INT TERM
 
     if [[ -t 1 ]]; then
         clear
     fi
     print_header
+
+    # Dry-run indicator.
+    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
+        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC} - No files will be modified\n"
+    fi
+
     if ! command -v jq > /dev/null 2>&1; then
-        echo -e "${RED}${ICON_ERROR}${NC} Missing dependency: jq"
+        echo -e "${YELLOW}${ICON_ERROR}${NC} Missing dependency: jq"
         echo -e "${GRAY}Install with: ${GREEN}brew install jq${NC}"
         exit 1
     fi
 
     if ! command -v bc > /dev/null 2>&1; then
-        echo -e "${RED}${ICON_ERROR}${NC} Missing dependency: bc"
+        echo -e "${YELLOW}${ICON_ERROR}${NC} Missing dependency: bc"
         echo -e "${GRAY}Install with: ${GREEN}brew install bc${NC}"
         exit 1
     fi
@@ -407,27 +411,7 @@ main() {
                 echo "${CURRENT_WHITELIST_PATTERNS[*]}"
             )
             echo -e "${ICON_ADMIN} Active Whitelist: ${patterns_list}"
-        else
-            echo -e "${ICON_ADMIN} Active Whitelist: ${GRAY}${count} items${NC}"
         fi
-    fi
-    echo ""
-
-    echo -ne "${PURPLE}${ICON_ARROW}${NC} Optimization needs sudo — ${GREEN}Enter${NC} continue, ${GRAY}ESC${NC} cancel: "
-
-    local key
-    if ! key=$(read_key); then
-        exit 0
-    fi
-
-    if [[ "$key" == "ENTER" ]]; then
-        printf "\r\033[K"
-    else
-        exit 0
-    fi
-
-    if [[ -t 1 ]]; then
-        stop_inline_spinner
     fi
 
     local -a safe_items=()
@@ -454,9 +438,12 @@ main() {
         fi
     done < "$opts_file"
 
-    local first_heading=true
+    echo ""
+    if [[ "${MOLE_DRY_RUN:-0}" != "1" ]]; then
+        ensure_sudo_session "System optimization requires admin access" || true
+    fi
 
-    ensure_sudo_session "System optimization requires admin access" || true
+    export FIRST_ACTION=true
     if [[ ${#safe_items[@]} -gt 0 ]]; then
         for item in "${safe_items[@]}"; do
             IFS='|' read -r name desc action path <<< "$item"

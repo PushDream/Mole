@@ -26,18 +26,23 @@
 
 ## Quick Start
 
+<<<<<<< HEAD
 ### macOS
 
 **Installation:**
+=======
+**Install by Brew, recommended:**
+>>>>>>> upstream/main
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash
+brew install mole
 ```
 
-Or via Homebrew:
+**or by Script, for older macOS or latest code:**
 
 ```bash
-brew install tw93/tap/mole
+# Use for older macOS or latest code; add '-s latest' for newest, or '-s 1.17.0' for a fixed version.
+curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash
 ```
 
 ### Windows
@@ -77,6 +82,7 @@ mo status                    # Live system health dashboard
 mo purge                     # Clean project build artifacts
 
 mo touchid                   # Configure Touch ID for sudo
+mo completion                # Setup shell tab completion
 mo update                    # Update Mole
 mo remove                    # Remove Mole from system
 mo --help                    # Show help
@@ -84,8 +90,10 @@ mo --version                 # Show installed version
 
 mo clean --dry-run           # Preview the cleanup plan
 mo clean --whitelist         # Manage protected caches
-mo uninstall --force-rescan  # Rescan applications and refresh cache
+
+mo optimize --dry-run        # Preview optimization actions
 mo optimize --whitelist      # Manage protected optimization rules
+mo purge --paths             # Configure project scan directories
 ```
 
 ## Tips
@@ -94,6 +102,7 @@ mo optimize --whitelist      # Manage protected optimization rules
 - **Safety**: Built with strict protections. See our [Security Audit](SECURITY_AUDIT.md). Preview changes with `mo clean --dry-run`.
 - **Whitelist**: Manage protected paths with `mo clean --whitelist`.
 - **Touch ID**: Enable Touch ID for sudo commands by running `mo touchid`.
+- **Shell Completion**: Enable tab completion by running `mo completion` (auto-detect and install).
 - **Navigation**: Supports standard arrow keys and Vim bindings (`h/j/k/l`).
 - **Debug**: View detailed logs by appending the `--debug` flag (e.g., `mo clean --debug`).
 
@@ -229,6 +238,21 @@ Select Categories to Clean - 18.5GB (8 selected)
 
 > **Use with caution:** This will permanently delete selected artifacts. Review carefully before confirming. Recent projects (< 7 days) are marked and unselected by default.
 
+<details>
+<summary><strong>Custom Scan Paths</strong></summary>
+
+Run `mo purge --paths` to configure which directories to scan, or edit `~/.config/mole/purge_paths` directly:
+
+```shell
+~/Documents/MyProjects
+~/Work/ClientA
+~/Work/ClientB
+```
+
+When custom paths are configured, only those directories are scanned. Otherwise, defaults to `~/Projects`, `~/GitHub`, `~/dev`, etc.
+
+</details>
+
 ## Quick Launchers
 
 Launch Mole commands instantly from Raycast or Alfred:
@@ -237,7 +261,15 @@ Launch Mole commands instantly from Raycast or Alfred:
 curl -fsSL https://raw.githubusercontent.com/tw93/Mole/main/scripts/setup-quick-launchers.sh | bash
 ```
 
-Adds 5 commands: `clean`, `uninstall`, `optimize`, `analyze`, `status`. Mole automatically detects your terminal, or you can set `MO_LAUNCHER_APP=<name>` to override. For Raycast, run "Reload Script Directories" to load the new commands.
+Adds 5 commands: `clean`, `uninstall`, `optimize`, `analyze`, `status`. Mole automatically detects your terminal, or you can set `MO_LAUNCHER_APP=<name>` to override. For Raycast, if this is your first script directory, add it in Raycast Extensions (Add Script Directory) and then run "Reload Script Directories" to load the new commands.
+
+## Community Love
+
+<p align="center">
+  <img src="https://cdn.tw93.fun/pic/lovemole.jpeg" alt="Community feedback on Mole" width="800" />
+</p>
+
+Users from around the world are loving Mole! Join the community and share your experience.
 
 ## Support
 
@@ -245,7 +277,6 @@ Adds 5 commands: `clean`, `uninstall`, `optimize`, `analyze`, `status`. Mole aut
 
 - If Mole saved you space, consider starring the repo or sharing it with friends who need a cleaner Mac.
 - Have ideas or fixes? Open an issue or PR to help shape Mole's future with the community.
-
 - Love cats? Treat Tangyuan and Cola to canned food via <a href="https://miaoyan.app/cats.html?name=Mole" target="_blank">this link</a> to keep our mascots purring.
 
 ## Platform Support

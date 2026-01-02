@@ -81,6 +81,7 @@ Apple Mail cache|$HOME/Library/Caches/com.apple.mail/*|system_cache
 Gradle build cache (Android Studio, Gradle projects)|$HOME/.gradle/caches/*|ide_cache
 Gradle daemon processes cache|$HOME/.gradle/daemon/*|ide_cache
 Xcode DerivedData (build outputs, indexes)|$HOME/Library/Developer/Xcode/DerivedData/*|ide_cache
+Xcode archives (built app packages)|$HOME/Library/Developer/Xcode/Archives/*|ide_cache
 Xcode internal cache files|$HOME/Library/Caches/com.apple.dt.Xcode/*|ide_cache
 Xcode iOS device support symbols|$HOME/Library/Developer/Xcode/iOS DeviceSupport/*/Symbols/System/Library/Caches/*|ide_cache
 Maven local repository (Java dependencies)|$HOME/.m2/repository/*|ide_cache
@@ -143,6 +144,7 @@ Podman container cache|$HOME/.local/share/containers/cache/*|container_cache
 Font cache|$HOME/Library/Caches/com.apple.FontRegistry/*|system_cache
 Spotlight metadata cache|$HOME/Library/Caches/com.apple.spotlight/*|system_cache
 CloudKit cache|$HOME/Library/Caches/CloudKit/*|system_cache
+Trash|$HOME/.Trash|system_cache
 EOF
     # Add FINDER_METADATA with constant reference
     echo "Finder metadata (.DS_Store)|$FINDER_METADATA_SENTINEL|system_cache"
@@ -154,8 +156,8 @@ get_optimize_whitelist_items() {
     cat << 'EOF'
 macOS Firewall check|firewall|security_check
 Gatekeeper check|gatekeeper|security_check
-Homebrew updates check|check_brew_updates|update_check
 macOS system updates check|check_macos_updates|update_check
+Mole updates check|check_mole_update|update_check
 Homebrew health check (doctor)|check_brew_health|health_check
 SIP status check|check_sip|security_check
 FileVault status check|check_filevault|security_check

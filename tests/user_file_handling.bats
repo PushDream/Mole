@@ -1,7 +1,5 @@
 #!/usr/bin/env bats
 
-# Tests for user file handling utilities in lib/core/base.sh
-# Covers: ensure_user_dir, ensure_user_file, get_invoking_user, etc.
 
 setup_file() {
     PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
@@ -28,18 +26,12 @@ setup() {
     mkdir -p "$HOME"
 }
 
-# ============================================================================
-# Darwin Version Detection Tests
-# ============================================================================
-
 @test "get_darwin_major returns numeric version on macOS" {
     result=$(bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; get_darwin_major")
-    # Should be a number (e.g., 23, 24, etc.)
     [[ "$result" =~ ^[0-9]+$ ]]
 }
 
 @test "get_darwin_major returns 999 on failure (mock uname failure)" {
-    # Mock uname to fail and verify fallback behavior
     result=$(bash -c "
         uname() { return 1; }
         export -f uname
@@ -50,20 +42,12 @@ setup() {
 }
 
 @test "is_darwin_ge correctly compares versions" {
-    # Should return true for minimum <= current
-    bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; is_darwin_ge 1"
-    [ $? -eq 0 ]
+    run bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; is_darwin_ge 1"
+    [ "$status" -eq 0 ]
 
-    # Should return false for very high version requirement (unless on futuristic macOS)
-    # Note: With our 999 fallback, this will actually succeed on error, which is correct behavior
     result=$(bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; is_darwin_ge 100 && echo 'yes' || echo 'no'")
-    # Just verify command runs without error
     [[ -n "$result" ]]
 }
-
-# ============================================================================
-# User Context Detection Tests
-# ============================================================================
 
 @test "is_root_user detects non-root correctly" {
     result=$(bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; is_root_user && echo 'root' || echo 'not-root'")
@@ -73,7 +57,6 @@ setup() {
 @test "get_invoking_user returns current user when not sudo" {
     result=$(bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; get_invoking_user")
     [ -n "$result" ]
-    # Should be current user
     [ "$result" = "${USER:-$(whoami)}" ]
 }
 
@@ -105,10 +88,6 @@ setup() {
     [ -z "$result" ] || [ "$result" = "~nonexistent_user_12345" ]
 }
 
-# ============================================================================
-# Directory Creation Tests
-# ============================================================================
-
 @test "ensure_user_dir creates simple directory" {
     test_dir="$HOME/.cache/test"
     bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_dir '$test_dir'"
@@ -134,8 +113,8 @@ setup() {
 }
 
 @test "ensure_user_dir handles empty path gracefully" {
-    bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_dir ''"
-    [ $? -eq 0 ]
+    run bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_dir ''"
+    [ "$status" -eq 0 ]
 }
 
 @test "ensure_user_dir preserves ownership for non-root users" {
@@ -147,9 +126,6 @@ setup() {
     [ "$dir_uid" = "$current_uid" ]
 }
 
-# ============================================================================
-# File Creation Tests
-# ============================================================================
 
 @test "ensure_user_file creates file and parent directories" {
     test_file="$HOME/.config/mole/test.log"
@@ -168,14 +144,13 @@ setup() {
     bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_file '$test_file'"
     echo "content" > "$test_file"
     bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_file '$test_file'"
-    # Should preserve existing content
     [ -f "$test_file" ]
     [ "$(cat "$test_file")" = "content" ]
 }
 
 @test "ensure_user_file handles empty path gracefully" {
-    bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_file ''"
-    [ $? -eq 0 ]
+    run bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_file ''"
+    [ "$status" -eq 0 ]
 }
 
 @test "ensure_user_file creates deeply nested files" {
@@ -193,29 +168,17 @@ setup() {
     [ "$file_uid" = "$current_uid" ]
 }
 
-# ============================================================================
-# Performance Tests (Early Stop Optimization)
-# ============================================================================
-
 @test "ensure_user_dir early stop optimization works" {
-    # Create a nested structure
     test_dir="$HOME/.cache/perf/test/nested"
     bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_dir '$test_dir'"
 
-    # Call again - should detect correct ownership and stop early
-    # This is a behavioral test; we verify it doesn't fail
     bash -c "source '$PROJECT_ROOT/lib/core/base.sh'; ensure_user_dir '$test_dir'"
     [ -d "$test_dir" ]
 
-    # Verify ownership is still correct
     current_uid=$(id -u)
     dir_uid=$(/usr/bin/stat -f%u "$test_dir")
     [ "$dir_uid" = "$current_uid" ]
 }
-
-# ============================================================================
-# Integration Tests
-# ============================================================================
 
 @test "ensure_user_dir and ensure_user_file work together" {
     cache_dir="$HOME/.cache/mole"
@@ -241,7 +204,6 @@ setup() {
 }
 
 @test "ensure functions handle concurrent calls safely" {
-    # Simulate concurrent directory creation
     bash -c "source '$PROJECT_ROOT/lib/core/base.sh'
         ensure_user_dir '$HOME/.cache/concurrent' &
         ensure_user_dir '$HOME/.cache/concurrent' &

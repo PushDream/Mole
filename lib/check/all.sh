@@ -35,7 +35,7 @@ check_touchid_sudo() {
     # Check if Touch ID is configured for sudo
     local pam_file="/etc/pam.d/sudo"
     if [[ -f "$pam_file" ]] && grep -q "pam_tid.so" "$pam_file" 2> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Touch ID     Enabled for sudo"
+        echo -e "  ${GREEN}✓${NC} Touch ID     Biometric authentication enabled"
     else
         # Check if Touch ID is supported
         local is_supported=false
@@ -48,7 +48,7 @@ check_touchid_sudo() {
         fi
 
         if [[ "$is_supported" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Touch ID     ${YELLOW}Not configured${NC} for sudo"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Touch ID     ${YELLOW}Not configured for sudo${NC}"
             export TOUCHID_NOT_CONFIGURED=true
         fi
     fi
@@ -60,9 +60,9 @@ check_rosetta() {
     # Check Rosetta 2 (for Apple Silicon Macs)
     if [[ "$(uname -m)" == "arm64" ]]; then
         if [[ -f "/Library/Apple/usr/share/rosetta/rosetta" ]]; then
-            echo -e "  ${GREEN}✓${NC} Rosetta 2    Installed"
+            echo -e "  ${GREEN}✓${NC} Rosetta 2    Intel app translation ready"
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Rosetta 2    ${YELLOW}Not installed${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Rosetta 2    ${YELLOW}Intel app support missing${NC}"
             export ROSETTA_NOT_INSTALLED=true
         fi
     fi
@@ -77,14 +77,15 @@ check_git_config() {
         local git_email=$(git config --global user.email 2> /dev/null || echo "")
 
         if [[ -n "$git_name" && -n "$git_email" ]]; then
-            echo -e "  ${GREEN}✓${NC} Git Config   Configured"
+            echo -e "  ${GREEN}✓${NC} Git          Global identity configured"
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Git Config   ${YELLOW}Not configured${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Git          ${YELLOW}User identity not set${NC}"
         fi
     fi
 }
 
 check_all_config() {
+    echo -e "${BLUE}${ICON_ARROW}${NC} System Configuration"
     check_touchid_sudo
     check_rosetta
     check_git_config
@@ -101,9 +102,9 @@ check_filevault() {
     if command -v fdesetup > /dev/null 2>&1; then
         local fv_status=$(fdesetup status 2> /dev/null || echo "")
         if echo "$fv_status" | grep -q "FileVault is On"; then
-            echo -e "  ${GREEN}✓${NC} FileVault    Enabled"
+            echo -e "  ${GREEN}✓${NC} FileVault    Disk encryption active"
         else
-            echo -e "  ${RED}✗${NC} FileVault    ${RED}Disabled${NC} (Recommend enabling)"
+            echo -e "  ${RED}✗${NC} FileVault    ${RED}Disk encryption disabled${NC}"
             export FILEVAULT_DISABLED=true
         fi
     fi
@@ -112,15 +113,13 @@ check_filevault() {
 check_firewall() {
     # Check whitelist
     if command -v is_whitelisted > /dev/null && is_whitelisted "firewall"; then return; fi
-    # Check firewall status
+    # Check firewall status using socketfilterfw (more reliable than defaults on modern macOS)
     unset FIREWALL_DISABLED
-    local firewall_status=$(defaults read /Library/Preferences/com.apple.alf globalstate 2> /dev/null || echo "0")
-    if [[ "$firewall_status" == "1" || "$firewall_status" == "2" ]]; then
-        echo -e "  ${GREEN}✓${NC} Firewall     Enabled"
+    local firewall_output=$(sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2> /dev/null || echo "")
+    if [[ "$firewall_output" == *"State = 1"* ]] || [[ "$firewall_output" == *"State = 2"* ]]; then
+        echo -e "  ${GREEN}✓${NC} Firewall     Network protection enabled"
     else
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Firewall     ${YELLOW}Disabled${NC} (Consider enabling)"
-        echo -e "    ${GRAY}System Settings → Network → Firewall, or run:${NC}"
-        echo -e "    ${GRAY}sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 1${NC}"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Firewall     ${YELLOW}Network protection disabled${NC}"
         export FIREWALL_DISABLED=true
     fi
 }
@@ -132,12 +131,10 @@ check_gatekeeper() {
     if command -v spctl > /dev/null 2>&1; then
         local gk_status=$(spctl --status 2> /dev/null || echo "")
         if echo "$gk_status" | grep -q "enabled"; then
-            echo -e "  ${GREEN}✓${NC} Gatekeeper   Active"
+            echo -e "  ${GREEN}✓${NC} Gatekeeper   App download protection active"
             unset GATEKEEPER_DISABLED
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Gatekeeper   ${YELLOW}Disabled${NC}"
-            echo -e "    ${GRAY}Enable via System Settings → Privacy & Security, or:${NC}"
-            echo -e "    ${GRAY}sudo spctl --master-enable${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Gatekeeper   ${YELLOW}App security disabled${NC}"
             export GATEKEEPER_DISABLED=true
         fi
     fi
@@ -150,15 +147,15 @@ check_sip() {
     if command -v csrutil > /dev/null 2>&1; then
         local sip_status=$(csrutil status 2> /dev/null || echo "")
         if echo "$sip_status" | grep -q "enabled"; then
-            echo -e "  ${GREEN}✓${NC} SIP          Enabled"
+            echo -e "  ${GREEN}✓${NC} SIP          System integrity protected"
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} SIP          ${YELLOW}Disabled${NC}"
-            echo -e "    ${GRAY}Restart into Recovery → Utilities → Terminal → run: csrutil enable${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} SIP          ${YELLOW}System protection disabled${NC}"
         fi
     fi
 }
 
 check_all_security() {
+    echo -e "${BLUE}${ICON_ARROW}${NC} Security Status"
     check_filevault
     check_firewall
     check_gatekeeper
@@ -239,16 +236,22 @@ check_macos_update() {
     if [[ $(get_software_updates) == "Updates Available" ]]; then
         updates_available="true"
 
-        # Verify with softwareupdate -l (short timeout) to reduce false positives
+        # Verify with softwareupdate using --no-scan to avoid triggering a fresh scan
+        # which can timeout. We prioritize avoiding false negatives (missing actual updates)
+        # over false positives, so we only clear the update flag when softwareupdate
+        # explicitly reports "No new software available"
         local sw_output=""
         local sw_status=0
         local spinner_started=false
         if [[ -t 1 ]]; then
-            start_inline_spinner "Checking macOS updates..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking macOS updates..."
             spinner_started=true
         fi
 
-        if ! sw_output=$(run_with_timeout 5 softwareupdate -l 2> /dev/null); then
+        local softwareupdate_timeout="${MO_SOFTWAREUPDATE_TIMEOUT:-10}"
+        if sw_output=$(run_with_timeout "$softwareupdate_timeout" softwareupdate -l --no-scan 2> /dev/null); then
+            :
+        else
             sw_status=$?
         fi
 
@@ -256,11 +259,17 @@ check_macos_update() {
             stop_inline_spinner
         fi
 
-        # If command failed, timed out, or returned empty, treat as no updates to avoid false positives
-        if [[ $sw_status -ne 0 || -z "$sw_output" ]]; then
-            updates_available="false"
-        elif echo "$sw_output" | grep -q "No new software available"; then
-            updates_available="false"
+        # Debug logging for troubleshooting
+        if [[ -n "${MO_DEBUG:-}" ]]; then
+            echo "[DEBUG] softwareupdate exit status: $sw_status, output lines: $(echo "$sw_output" | wc -l | tr -d ' ')" >&2
+        fi
+
+        # Prefer avoiding false negatives: if the system indicates updates are pending,
+        # only clear the flag when softwareupdate returns a list without any update entries.
+        if [[ $sw_status -eq 0 && -n "$sw_output" ]]; then
+            if ! echo "$sw_output" | grep -qE '^[[:space:]]*\*'; then
+                updates_available="false"
+            fi
         fi
     fi
 
@@ -269,11 +278,13 @@ check_macos_update() {
     if [[ "$updates_available" == "true" ]]; then
         echo -e "  ${YELLOW}${ICON_WARNING}${NC} macOS        ${YELLOW}Update available${NC}"
     else
-        echo -e "  ${GREEN}✓${NC} macOS        Up to date"
+        echo -e "  ${GREEN}✓${NC} macOS        System up to date"
     fi
 }
 
 check_mole_update() {
+    if command -v is_whitelisted > /dev/null && is_whitelisted "check_mole_update"; then return; fi
+
     # Check if Mole has updates
     # Auto-detect version from mole main script
     local current_version
@@ -294,17 +305,27 @@ check_mole_update() {
     else
         # Show spinner while checking
         if [[ -t 1 ]]; then
-            start_inline_spinner "Checking Mole version..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking Mole version..."
         fi
 
         # Try to get latest version from GitHub
         if command -v curl > /dev/null 2>&1; then
-            latest_version=$(curl -fsSL https://api.github.com/repos/tw93/mole/releases/latest 2> /dev/null | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/' || echo "")
-            # Save to cache
-            if [[ -n "$latest_version" ]]; then
-                ensure_user_file "$cache_file"
-                echo "$latest_version" > "$cache_file" 2> /dev/null || true
+            # Run in background to allow Ctrl+C to interrupt
+            local temp_version
+            temp_version=$(mktemp_file "mole_version_check")
+            curl -fsSL --connect-timeout 3 --max-time 5 https://api.github.com/repos/tw93/mole/releases/latest 2> /dev/null | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/' > "$temp_version" &
+            local curl_pid=$!
+
+            # Wait for curl to complete (allows Ctrl+C to interrupt)
+            if wait "$curl_pid" 2> /dev/null; then
+                latest_version=$(cat "$temp_version" 2> /dev/null || echo "")
+                # Save to cache
+                if [[ -n "$latest_version" ]]; then
+                    ensure_user_file "$cache_file"
+                    echo "$latest_version" > "$cache_file" 2> /dev/null || true
+                fi
             fi
+            rm -f "$temp_version" 2> /dev/null || true
         fi
 
         # Stop spinner
@@ -323,13 +344,12 @@ check_mole_update() {
         # Compare versions
         if [[ "$(printf '%s\n' "$current_version" "$latest_version" | sort -V | head -1)" == "$current_version" ]]; then
             export MOLE_UPDATE_AVAILABLE="true"
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Mole         ${YELLOW}${latest_version} available${NC} (current: ${current_version})"
-            echo -e "    ${GRAY}Run: ${GREEN}mo update${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Mole         ${YELLOW}${latest_version} available${NC} (running ${current_version})"
         else
-            echo -e "  ${GREEN}✓${NC} Mole         Up to date (${current_version})"
+            echo -e "  ${GREEN}✓${NC} Mole         Latest version ${current_version}"
         fi
     else
-        echo -e "  ${GREEN}✓${NC} Mole         Up to date (${current_version})"
+        echo -e "  ${GREEN}✓${NC} Mole         Latest version ${current_version}"
     fi
 }
 
@@ -341,6 +361,7 @@ check_all_updates() {
     # Only redirect stdout, keep stderr for spinner display
     get_software_updates > /dev/null
 
+    echo -e "${BLUE}${ICON_ARROW}${NC} System Updates"
     check_appstore_updates
     check_macos_update
     check_mole_update
@@ -448,7 +469,7 @@ check_login_items() {
     if [[ -t 0 ]]; then
         # Show spinner while getting login items
         if [[ -t 1 ]]; then
-            start_inline_spinner "Checking login items..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking login items..."
         fi
 
         while IFS= read -r login_item; do
@@ -463,16 +484,16 @@ check_login_items() {
     fi
 
     if [[ $login_items_count -gt 15 ]]; then
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Login Items  ${YELLOW}${login_items_count} apps${NC} auto-start (High)"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Login Items  ${YELLOW}${login_items_count} apps${NC}"
     elif [[ $login_items_count -gt 0 ]]; then
-        echo -e "  ${GREEN}✓${NC} Login Items  ${login_items_count} apps auto-start"
+        echo -e "  ${GREEN}✓${NC} Login Items  ${login_items_count} apps"
     else
         echo -e "  ${GREEN}✓${NC} Login Items  None"
         return
     fi
 
-    # Show items in a single line
-    local preview_limit=5
+    # Show items in a single line (compact)
+    local preview_limit=3
     ((preview_limit > login_items_count)) && preview_limit=$login_items_count
 
     local items_display=""
@@ -486,11 +507,10 @@ check_login_items() {
 
     if ((login_items_count > preview_limit)); then
         local remaining=$((login_items_count - preview_limit))
-        items_display="${items_display}, and ${remaining} more"
+        items_display="${items_display} +${remaining}"
     fi
 
     echo -e "    ${GRAY}${items_display}${NC}"
-    echo -e "    ${GRAY}Manage in System Settings → Login Items${NC}"
 }
 
 check_cache_size() {
@@ -504,7 +524,7 @@ check_cache_size() {
 
     # Show spinner while calculating cache size
     if [[ -t 1 ]]; then
-        start_inline_spinner "Scanning cache..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning cache..."
     fi
 
     for cache_path in "${cache_paths[@]}"; do
@@ -541,7 +561,8 @@ check_swap_usage() {
     if command -v sysctl > /dev/null 2>&1; then
         local swap_info=$(sysctl vm.swapusage 2> /dev/null || echo "")
         if [[ -n "$swap_info" ]]; then
-            local swap_used=$(echo "$swap_info" | grep -o "used = [0-9.]*[GM]" | awk '{print $3}' || echo "0M")
+            local swap_used=$(echo "$swap_info" | grep -o "used = [0-9.]*[GM]" | awk 'NR==1{print $3}')
+            swap_used=${swap_used:-0M}
             local swap_num="${swap_used//[GM]/}"
 
             if [[ "$swap_used" == *"G"* ]]; then
@@ -564,6 +585,7 @@ check_brew_health() {
 }
 
 check_system_health() {
+    echo -e "${BLUE}${ICON_ARROW}${NC} System Health"
     check_disk_space
     check_memory_usage
     check_swap_usage
