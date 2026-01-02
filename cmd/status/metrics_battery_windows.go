@@ -51,6 +51,9 @@ func parsePowerShellBattery(raw string) []BatteryStatus {
 	var status string
 	var timeLeft string
 	var health string
+	var designCapacity int
+	var fullChargeCapacity int
+	var capacity int
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -103,12 +106,37 @@ func parsePowerShellBattery(raw string) []BatteryStatus {
 			}
 		}
 
-		// Calculate health from FullChargeCapacity/DesignCapacity
-		if strings.Contains(line, "FullChargeCapacity") || strings.Contains(line, "DesignCapacity") {
-			// Parse both values to calculate health percentage
-			// This is a simplified version - full implementation would track both values
-			health = "Good" // Default
+		// Parse DesignCapacity (original battery capacity in mWh)
+		if strings.Contains(line, "DesignCapacity") && !strings.Contains(line, "FullChargeCapacity") {
+			if _, after, found := strings.Cut(line, ":"); found {
+				valStr := strings.TrimSpace(strings.Trim(after, ","))
+				designCapacity, _ = strconv.Atoi(valStr)
+			}
 		}
+
+		// Parse FullChargeCapacity (current maximum capacity in mWh)
+		if strings.Contains(line, "FullChargeCapacity") {
+			if _, after, found := strings.Cut(line, ":"); found {
+				valStr := strings.TrimSpace(strings.Trim(after, ","))
+				fullChargeCapacity, _ = strconv.Atoi(valStr)
+			}
+		}
+	}
+
+	// Calculate battery health capacity percentage
+	if designCapacity > 0 && fullChargeCapacity > 0 {
+		capacity = int((float64(fullChargeCapacity) / float64(designCapacity)) * 100.0)
+
+		// Set health status based on capacity
+		if capacity >= 85 {
+			health = "Good"
+		} else if capacity >= 70 {
+			health = "Fair"
+		} else {
+			health = "Poor"
+		}
+	} else {
+		health = "Unknown"
 	}
 
 	if percent > 0 || status != "" {
@@ -117,7 +145,8 @@ func parsePowerShellBattery(raw string) []BatteryStatus {
 			Status:     status,
 			TimeLeft:   timeLeft,
 			Health:     health,
-			CycleCount: 0, // Windows doesn't easily expose cycle count
+			CycleCount: 0, // Windows doesn't easily expose cycle count via WMI
+			Capacity:   capacity,
 		})
 	}
 

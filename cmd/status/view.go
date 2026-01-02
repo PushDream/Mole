@@ -282,6 +282,25 @@ func renderMemoryCard(mem MemoryStatus) cardData {
 		available := mem.Total - mem.Used
 		lines = append(lines, fmt.Sprintf("Avail  %s", humanBytes(available)))
 	}
+
+	// Windows-specific memory details
+	if mem.Committed > 0 && mem.CommittedLimit > 0 {
+		commitPercent := (float64(mem.Committed) / float64(mem.CommittedLimit)) * 100.0
+		lines = append(lines, fmt.Sprintf("Commit %s / %s (%5.1f%%)",
+			humanBytesCompact(mem.Committed), humanBytesCompact(mem.CommittedLimit), commitPercent))
+	}
+	if mem.PagedPool > 0 || mem.NonPagedPool > 0 {
+		poolParts := []string{}
+		if mem.PagedPool > 0 {
+			poolParts = append(poolParts, fmt.Sprintf("Paged %s", humanBytesCompact(mem.PagedPool)))
+		}
+		if mem.NonPagedPool > 0 {
+			poolParts = append(poolParts, fmt.Sprintf("NonPaged %s", humanBytesCompact(mem.NonPagedPool)))
+		}
+		if len(poolParts) > 0 {
+			lines = append(lines, "Pool   "+strings.Join(poolParts, " · "))
+		}
+	}
 	// Memory pressure status.
 	if mem.Pressure != "" {
 		pressureStyle := okStyle

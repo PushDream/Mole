@@ -85,6 +85,11 @@ type MemoryStatus struct {
 	SwapTotal   uint64
 	Cached      uint64 // File cache that can be freed if needed
 	Pressure    string // macOS memory pressure: normal/warn/critical
+	// Windows-specific metrics
+	Committed      uint64 // Windows: Committed memory (virtual memory in use)
+	CommittedLimit uint64 // Windows: Maximum committed memory
+	PagedPool      uint64 // Windows: Paged pool (kernel memory that can be paged)
+	NonPagedPool   uint64 // Windows: Non-paged pool (kernel memory that must stay in RAM)
 }
 
 type DiskStatus struct {

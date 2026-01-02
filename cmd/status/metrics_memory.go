@@ -25,14 +25,21 @@ func collectMemory() (MemoryStatus, error) {
 		cached = getFileBackedMemory()
 	}
 
+	// Collect Windows-specific memory details
+	committed, committedLimit, pagedPool, nonPagedPool := getWindowsMemoryDetails()
+
 	return MemoryStatus{
-		Used:        vm.Used,
-		Total:       vm.Total,
-		UsedPercent: vm.UsedPercent,
-		SwapUsed:    swap.Used,
-		SwapTotal:   swap.Total,
-		Cached:      cached,
-		Pressure:    pressure,
+		Used:           vm.Used,
+		Total:          vm.Total,
+		UsedPercent:    vm.UsedPercent,
+		SwapUsed:       swap.Used,
+		SwapTotal:      swap.Total,
+		Cached:         cached,
+		Pressure:       pressure,
+		Committed:      committed,
+		CommittedLimit: committedLimit,
+		PagedPool:      pagedPool,
+		NonPagedPool:   nonPagedPool,
 	}, nil
 }
 
